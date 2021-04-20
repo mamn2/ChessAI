@@ -170,7 +170,21 @@ def alphabeta(side, board, flags, depth, alpha=-math.inf, beta=math.inf):
         
         return minVal, moveList, movesTree
 
-    
+def stochasticPath(side, board, flags, depth, breadth, chooser):
+
+    if depth == 0:
+        return evaluate(board), [], {}
+
+    movesTree = {}
+    # for some reason it needs a list
+    possibleMoves = [ move for move in generateMoves(side, board, flags) ]
+    thisMove = chooser(possibleMoves)
+    fro, to, promote = thisMove
+    newSide, newBoard, newFlag = makeMove(side, board, fro, to, flags, promote)
+    newVal, newMoveList, newMoveTree = stochasticPath(newSide, newBoard, newFlag, depth-1, breadth, chooser)
+    movesTree[encode(*thisMove)] = newMoveTree
+    movesList = [ thisMove ] + newMoveList
+    return newVal, movesList, movesTree
 
 def stochastic(side, board, flags, depth, breadth, chooser):
     '''
@@ -187,4 +201,25 @@ def stochastic(side, board, flags, depth, breadth, chooser):
       breadth: number of different paths 
       chooser: a function similar to random.choice, but during autograding, might not be random.
     '''
-    raise NotImplementedError("you need to write this!")
+
+    possibleMoves = generateMoves(side, board, flags)
+    bestAvgValue = 99999
+    movesTree = {}
+    for move in possibleMoves:
+        totalVal = 0
+        fro, to, promote = move
+        firstSide, firstBoard, firstFlag = makeMove(side, board, fro, to, flags, promote)
+        movesTree[(encode(*move))] = {}
+        for i in range(breadth):
+            curVal, moveList, moveTree = stochasticPath(firstSide, firstBoard, firstFlag, depth-1, breadth, chooser)
+            for key in moveTree:
+                movesTree[(encode(*move))][key] = moveTree[key]
+            totalVal += curVal
+        avgVal = float(totalVal) / float(breadth)
+        if avgVal < bestAvgValue:
+            bestAvgValue = avgVal
+            bestMove = [ move ] + moveList
+
+    return bestAvgValue, bestMove, movesTree
+    
+    
